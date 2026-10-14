@@ -14,17 +14,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- CUSTOM CSS FOR HIGH-TECH AESTHETIC THEME (Updated) ---
+# --- AESTHETIC DARK TECH THEME (CSS) ---
 st.markdown("""
     <style>
-    /* Main Background & Deep Space Aesthetic */
     .stApp {
         background-color: #010409;
         color: #e6edf3;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
-    
-    /* Background Gradient Effect - Waisa hi subtle visual */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         position: fixed;
@@ -37,21 +34,16 @@ st.markdown("""
             radial-gradient(circle at 30% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
         z-index: -1;
     }
-
-    /* Header Styling */
     h1 {
-        color: #38bdf8 !important; /* Vivid Blue */
+        color: #38bdf8 !important;
         font-weight: 800;
         letter-spacing: -0.75px;
-        text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
     }
-    
     p, label {
-        color: #94a3b8 !important; /* Subtle Gray */
+        color: #94a3b8 !important;
         font-size: 1.1rem;
     }
-
-    /* Text Input Styling */
     .stTextInput input {
         background-color: #0d1117;
         color: #ffffff;
@@ -64,8 +56,6 @@ st.markdown("""
         border-color: #38bdf8;
         box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
     }
-
-    /* Custom Button Styling - Waisa hi smooth interaction */
     .stButton button {
         background: linear-gradient(135deg, #166534 0%, #15803d 100%);
         color: white;
@@ -83,15 +73,6 @@ st.markdown("""
         box-shadow: 0 8px 20px rgba(21, 128, 61, 0.5);
         transform: translateY(-2px);
     }
-
-    /* Message Boxes Customization */
-    div.stSuccess, div.stWarning, div.stInfo, div.stError {
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.06) !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
-    }
-
-    /* Metric Card Customization */
     div[data-testid="stMetric"] {
         background-color: #0d1117;
         border: 1px solid #30363d;
@@ -108,20 +89,10 @@ st.markdown("""
         font-size: 2.2rem !important;
         text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
     }
-
-    /* Subtle Border on Expander */
-    .streamlit-expanderHeader {
-        background-color: #0d1117;
-        border-radius: 10px;
-        color: #e6edf3 !important;
-    }
-    .streamlit-expanderContent {
-        background-color: transparent;
-    }
     </style>
 """, unsafe_allow_html=True)
 
-EXCLUDED_DIRS = {'node_modules', '.git', '__pycache__', 'venv', 'env'}
+EXCLUDED_DIRS = {'node_modules', '.git', '__pycache__', 'venv', 'env', '$RECYCLE.BIN', 'System Volume Information'}
 
 # --- 1. SETUP SQLITE CACHE ---
 def init_db():
@@ -138,7 +109,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- 2. LIGHTNING-FAST PARTIAL HASH ---
+# --- 2. LIGHTNING-FAST HASH ---
 def get_partial_hash(file_path, chunk_size=4096):
     hasher = hashlib.sha256()
     try:
@@ -152,7 +123,6 @@ def get_partial_hash(file_path, chunk_size=4096):
     except Exception:
         return None
 
-# --- 3. MULTI-STAGE PIPELINE ---
 def process_file(file_path):
     conn = sqlite3.connect("file_cache.db")
     cursor = conn.cursor()
@@ -182,108 +152,75 @@ def process_file(file_path):
 
     return {"path": file_path, "size": size, "partial_hash": p_hash}
 
-def scan_folder(folder_path):
+def scan_search_space(search_root):
     init_db()
     file_list = []
-    
-    for root, dirs, files in os.walk(folder_path):
+    for root, dirs, files in os.walk(search_root):
         dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
         for file in files:
             file_list.append(os.path.join(root, file))
 
-    size_map = {}
-    for path in file_list:
-        try:
-            size = os.path.getsize(path)
-            if size > 0:
-                size_map.setdefault(size, []).append(path)
-        except Exception:
-            continue
-
-    potential_duplicates = [paths for size, paths in size_map.items() if len(paths) > 1]
-    all_files_to_check = [path for group in potential_duplicates for path in group]
-
     results = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(process_file, path) for path in all_files_to_check]
+        futures = [executor.submit(process_file, path) for path in file_list]
         for future in concurrent.futures.as_completed(futures):
             res = future.result()
             if res:
                 results.append(res)
-
     return results
 
-# --- 4. STREAMLIT USER INTERFACE ---
-# Modernizing the title with an icon
+# --- 3. STREAMLIT USER INTERFACE ---
 st.title("⚡ Smart Duplicate File Detector")
-st.markdown("A high-performance, multi-stage OS-optimized scanning engine with SQLite caching.")
+st.markdown("Find where identical files (different names, same content) are hidden across your device.")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Input container card (styled automatically by CSS)
-user_input = st.text_input("📁 Enter Folder Path OR Specific File Path:", str(Path.home() / "Downloads"))
+# User inputs a specific file path now!
+target_file_input = st.text_input("📁 Enter Specific File Path (e.g., C:\\Users\\samru\\Desktop\\Folder1\\AgenticAI.pdf):", "")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-if st.button("🚀 Start High-Speed Scan"):
-    if os.path.isfile(user_input):
-        target_folder = os.path.dirname(user_input)
-        target_file_name = os.path.basename(user_input)
-    elif os.path.isdir(user_input):
-        target_folder = user_input
-        target_file_name = None
+if st.button("🚀 Find Where This File Exists"):
+    clean_path = target_file_input.strip('"') # Automatically remove quotes if copied via "Copy as path"
+    
+    if not os.path.isfile(clean_path):
+        st.error("⚠️ Please enter a valid, existing file path (Make sure to include the filename at the end).")
     else:
-        target_folder = None
-
-    if not target_folder or not os.path.isdir(target_folder):
-        st.error("⚠️ Please enter a valid folder or file path.")
-    else:
-        with st.spinner("🔍 Executing multi-stage scan pipeline..."):
+        with st.spinner("🔍 Scanning storage and matching content hashes..."):
             start_time = time.time()
-            scanned_files = scan_folder(target_folder)
             
-            hash_groups = {}
+            # Get target file's hash
+            target_hash = get_partial_hash(clean_path)
+            target_size = os.path.getsize(clean_path)
+            
+            # Determine search root (We scan the parent drive or user folder to find duplicates)
+            # To make it fast and thorough, we scan the drive/folder where this file lives
+            drive_root = os.path.splitdrive(clean_path)[0] + "\\" if os.path.splitdrive(clean_path)[0] else "C:\\"
+            
+            # Scan files in that drive/parent space
+            scanned_files = scan_search_space(os.path.dirname(os.path.dirname(clean_path))) # Scans broader parent directory
+            
+            # Find all files with the same hash
+            matching_files = []
             for file_info in scanned_files:
-                p_hash = file_info["partial_hash"]
-                if p_hash:
-                    hash_groups.setdefault(p_hash, []).append(file_info["path"])
-
-            duplicates = {h: paths for h, paths in hash_groups.items() if len(paths) > 1}
+                if file_info["partial_hash"] == target_hash and file_info["size"] == target_size:
+                    matching_files.append(file_info["path"])
+            
             elapsed = time.time() - start_time
 
-        st.success(f"✨ Scan completed successfully in {elapsed:.2f} seconds!")
+        st.success(f"✨ Search completed successfully in {elapsed:.2f} seconds!")
 
-        if target_file_name:
-            found_target = False
-            for paths in duplicates.values():
-                if any(os.path.basename(p).lower() == target_file_name.lower() for p in paths):
-                    found_target = True
-                    # Re-designing duplicate locations list to be subtle
-                    st.warning(f"⚠️ The target file **{target_file_name}** has duplicates!")
-                    st.markdown("### 📍 Duplicate File Locations:")
-                    for i, p in enumerate(paths, 1):
-                        st.markdown(f"**{i}.** `📁 {p}`")
-                    break
-            if not found_target:
-                st.info(f"✅ The file **{target_file_name}** is completely unique. No duplicates found.")
+        st.markdown("---")
+        if len(matching_files) <= 1:
+            st.info(f"✅ **No duplicates found!** The file `{os.path.basename(clean_path)}` is unique in this directory.")
         else:
-            duplicate_files = []
-            for paths in duplicates.values():
-                duplicate_files.extend(paths[1:])
-
-            total_dups_count = len(duplicate_files)
-
-            st.markdown("---")
-            if total_dups_count == 0:
-                st.info("✅ **No duplicate files found!** Your directory is fully optimized.")
-            else:
-                # Metric will be styled to glow subtly
-                st.metric(label="Total Redundant Duplicate Files", value=total_dups_count)
-                st.warning(f"⚠️ Found **{total_dups_count}** duplicate copy file(s) ready for cleanup.")
-                
-                st.markdown("### 📍 Duplicate File Locations:")
-                for i, dup_path in enumerate(duplicate_files, 1):
-                    file_name = os.path.basename(dup_path)
-                    folder_loc = os.path.dirname(dup_path)
-                    st.markdown(f"**{i}. Name:** `{file_name}`")
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 **Location:** `{folder_loc}`")
+            st.metric(label="Total Identical Copies Found", value=len(matching_files))
+            st.warning(f"⚠️ The same file content was found in **{len(matching_files)} different places** (even with different names):")
+            
+            st.markdown("### 📍 File Locations & Names:")
+            for i, match_p in enumerate(matching_files, 1):
+                f_name = os.path.basename(match_p)
+                f_dir = os.path.dirname(match_p)
+                is_target = " (Target File)" if os.path.normpath(match_p) == os.path.normpath(clean_path) else ""
+                st.markdown(f"**{i}. File Name:** `{f_name}`{is_target}")
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;📍 **Location:** `{f_dir}`")
